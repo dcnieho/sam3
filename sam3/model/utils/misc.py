@@ -1,6 +1,6 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates. All Rights Reserved
 
-import os
+import os, platform
 from collections import OrderedDict, defaultdict
 from dataclasses import fields, is_dataclass
 from typing import Any, Mapping, Protocol, runtime_checkable
@@ -213,7 +213,7 @@ class VideoFileLoaderWithTorchCodec:
         if gpu_acceleration:
             self.img_mean = self.img_mean.to(f"cuda:{self.gpu_id}")
             self.img_std = self.img_std.to(f"cuda:{self.gpu_id}")
-            decoder_option = {} # upload later, no windows version of cuda-enabled torchcodec.... {"device": f"cuda:{self.gpu_id}"}
+            decoder_option = {"device": f"cuda:{self.gpu_id}"} if platform.system() == "Linux" else {} # not on Linux? Upload later as no cuda-enabled versions of torchcodec are available
         else:
             self.img_mean = self.img_mean.cpu()
             self.img_std = self.img_std.cpu()
