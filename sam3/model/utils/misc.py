@@ -1,8 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates. All Rights Reserved
 
+import os
 from collections import OrderedDict, defaultdict
 from dataclasses import fields, is_dataclass
 from typing import Any, Mapping, Protocol, runtime_checkable
+from PIL import Image
+import numpy as np
 
 import torch
 import torch.nn.functional as F
@@ -182,6 +185,7 @@ class VideoFileLoaderWithTorchCodec:
         gpu_acceleration=True,
         gpu_device=None,
         cache_size=100,
+        separate_prompts=None,
     ):
         # Check and possibly infer the output device (and also get its GPU id when applicable)
         assert gpu_device is None or gpu_device.type == "cuda"
@@ -225,6 +229,18 @@ class VideoFileLoaderWithTorchCodec:
         self.video_height = self.video_stream.metadata.height
         self.video_width = self.video_stream.metadata.width
 
+        # if we have extra frames for prompts, set up loading for those too
+        self.extra_frames = None
+        if separate_prompts is not None:
+            self.extra_frames = [fr for fr in separate_prompts]
+            self.num_extra_frames = len(self.extra_frames)
+            self.num_frames += self.num_extra_frames
+        img_paths = [video_path]
+        if self.extra_frames is not None:
+            self.img_paths = self.extra_frames+img_paths
+        else:
+            self.img_paths = img_paths
+
         # Create an LRU cache for frames
         self.cache_size = cache_size
         self.frame_cache = LRUCache(capacity=self.cache_size)
@@ -250,11 +266,22 @@ class VideoFileLoaderWithTorchCodec:
         return self.get_frame(idx)
 
     def _load_frame(self, idx):
+        if self.extra_frames is not None:
+            if idx<self.num_extra_frames:
+                img = Image.open(self.extra_frames[idx]).convert("RGB")
+                self.video_width  = img.width
+                self.video_height = img.height
+                return self._transform_frame(img)
+            else:
+                idx = idx-self.num_extra_frames
         frame = self.video_stream[idx].to(self.out_device)  # ensure on correct device
         return self._transform_frame(frame)
 
     def _transform_frame(self, frame):
-        frame = frame.float()  # convert to float32 before interpolation
+        if not isinstance(frame, torch.Tensor):
+            frame = torch.tensor(np.array(frame), dtype=torch.float32).permute(2, 0, 1).to(self.out_device)
+        else:
+            frame = frame.float()  # convert to float32 before interpolation
         frame_resized = F.interpolate(
             frame[None, :],
             size=(self.image_size, self.image_size),

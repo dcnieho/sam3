@@ -5,6 +5,8 @@ from collections import OrderedDict
 
 import torch
 
+import numpy as np
+
 from sam3.model.sam3_tracker_base import concat_points, NO_OBJ_SCORE, Sam3TrackerBase
 from sam3.model.sam3_tracker_utils import fill_holes_in_mask_scores
 from sam3.model.utils.misc import LRUCache
@@ -65,6 +67,7 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
         offload_state_to_cpu=False,
         async_loading_frames=False,
         lazy_loading=False,
+        separate_prompts=None
     ):
         """Initialize a inference state."""
         inference_state = {}
@@ -90,7 +93,9 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
                 async_loading_frames=async_loading_frames,
                 compute_device=inference_state["storage_device"],
                 lazy_loading=lazy_loading,
+                separate_prompts=separate_prompts,
             )
+
             inference_state["images"] = images
             inference_state["num_frames"] = len(images)
             inference_state["video_height"] = video_height
@@ -135,6 +140,26 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
         inference_state["tracking_has_started"] = False
         inference_state["frames_already_tracked"] = {}
         self.clear_all_points_in_video(inference_state)
+
+        # if we have prompts, apply them
+        if separate_prompts is not None:
+            # dict with key filename, containing per object a list of coordinates and associated labels
+            for idx,f_name in enumerate(separate_prompts):
+                prompts = separate_prompts[f_name]
+                for o in prompts:
+                    if o=='frame':
+                        continue
+                    # adding prompts one at a time leads to much better results than all at once
+                    for c,l in zip(prompts[o]['coords'],prompts[o]['labels']):
+                        self.add_new_points_or_box(
+                            inference_state=inference_state,
+                            frame_idx=prompts['frame'] if 'frame' in prompts else idx,
+                            obj_id=o,
+                            points = np.array(c).reshape(-1,2)/[video_width, video_height], # pass as relative coords
+                            labels = np.array([l]),  # 1 is positive click, 0 is negative click
+                            clear_old_points=False
+                        )
+
         return inference_state
 
     def _obj_id_to_idx(self, inference_state, obj_id):

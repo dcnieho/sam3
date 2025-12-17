@@ -103,6 +103,7 @@ def load_video_frames(
     img_std=(0.5, 0.5, 0.5),
     async_loading_frames=False,
     lazy_loading=False,
+    separate_prompts=None,
     compute_device=torch.device("cuda"),
 ):
     """
@@ -117,6 +118,7 @@ def load_video_frames(
             img_mean=img_mean,
             img_std=img_std,
             gpu_device=compute_device,
+            separate_prompts=separate_prompts,
         )
         return loader, loader.video_height, loader.video_width
     
