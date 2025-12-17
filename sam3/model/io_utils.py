@@ -17,6 +17,9 @@ from PIL import Image
 from sam3.logger import get_logger
 from tqdm import tqdm
 
+from sam3.model.utils.misc import TorchCodecDecoder, VideoFileLoaderWithTorchCodec
+
+
 logger = get_logger(__name__)
 
 IS_MAIN_PROCESS = os.getenv("IS_MAIN_PROCESS", "1") == "1"
@@ -33,6 +36,7 @@ def load_resource_as_video_frames(
     img_mean=(0.5, 0.5, 0.5),
     img_std=(0.5, 0.5, 0.5),
     async_loading_frames=False,
+    lazy_loading=False,
     video_loader_type="cv2",
 ):
     """
@@ -86,6 +90,7 @@ def load_resource_as_video_frames(
             img_mean=img_mean,
             img_std=img_std,
             async_loading_frames=async_loading_frames,
+            lazy_loading=lazy_loading,
             video_loader_type=video_loader_type,
         )
 
@@ -120,6 +125,7 @@ def load_video_frames(
     img_mean=(0.5, 0.5, 0.5),
     img_std=(0.5, 0.5, 0.5),
     async_loading_frames=False,
+    lazy_loading=False,
     video_loader_type="cv2",
 ):
     """
@@ -149,6 +155,7 @@ def load_video_frames(
             img_mean=img_mean,
             img_std=img_std,
             async_loading_frames=async_loading_frames,
+            lazy_loading=lazy_loading,
             video_loader_type=video_loader_type,
         )
     else:
@@ -217,12 +224,22 @@ def load_video_frames_from_video_file(
     img_mean,
     img_std,
     async_loading_frames,
+    lazy_loading,
     gpu_acceleration=False,
     gpu_device=None,
     video_loader_type="cv2",
 ):
     """Load the video frames from a video file."""
-    if video_loader_type == "cv2":
+    if lazy_loading:
+        loader = VideoFileLoaderWithTorchCodec(
+            video_path=video_path,
+            image_size=image_size,
+            offload_video_to_cpu=offload_video_to_cpu,
+            img_mean=img_mean,
+            img_std=img_std
+        )
+        return loader, loader.video_height, loader.video_width
+    elif video_loader_type == "cv2":
         return load_video_frames_from_video_file_using_cv2(
             video_path=video_path,
             image_size=image_size,
@@ -398,58 +415,6 @@ class AsyncImageFrameLoader:
 
     def __len__(self):
         return len(self.images)
-
-
-class TorchCodecDecoder:
-    """
-    A wrapper to support GPU device and num_threads in TorchCodec decoder,
-    which are not supported by `torchcodec.decoders.SimpleVideoDecoder` yet.
-    """
-
-    def __init__(self, source, dimension_order="NCHW", device="cpu", num_threads=1):
-        from torchcodec import _core as core
-
-        self._source = source  # hold a reference to the source to prevent it from GC
-        if isinstance(source, str):
-            self._decoder = core.create_from_file(source, "exact")
-        elif isinstance(source, bytes):
-            self._decoder = core.create_from_bytes(source, "exact")
-        else:
-            raise TypeError(f"Unknown source type: {type(source)}.")
-        assert dimension_order in ("NCHW", "NHWC")
-
-        device_string = str(device)
-        core.scan_all_streams_to_update_metadata(self._decoder)
-        core.add_video_stream(
-            self._decoder,
-            dimension_order=dimension_order,
-            device=device_string,
-            num_threads=(1 if "cuda" in device_string else num_threads),
-        )
-        video_metadata = core.get_container_metadata(self._decoder)
-        best_stream_index = video_metadata.best_video_stream_index
-        assert best_stream_index is not None
-        self.metadata = video_metadata.streams[best_stream_index]
-        assert self.metadata.num_frames_from_content is not None
-        self._num_frames = self.metadata.num_frames_from_content
-
-    def __len__(self) -> int:
-        return self._num_frames
-
-    def __getitem__(self, key: int):
-        from torchcodec import _core as core
-
-        if key < 0:
-            key += self._num_frames
-        if key >= self._num_frames or key < 0:
-            raise IndexError(
-                f"Index {key} is out of bounds; length is {self._num_frames}"
-            )
-        frame_data, *_ = core.get_frame_at_index(
-            self._decoder,
-            frame_index=key,
-        )
-        return frame_data
 
 
 class FIFOLock:
