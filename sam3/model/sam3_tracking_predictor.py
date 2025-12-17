@@ -7,6 +7,7 @@ import torch
 
 from sam3.model.sam3_tracker_base import concat_points, NO_OBJ_SCORE, Sam3TrackerBase
 from sam3.model.sam3_tracker_utils import fill_holes_in_mask_scores
+from sam3.model.utils.misc import LRUCache
 from sam3.model.utils.sam2_utils import load_video_frames
 from tqdm.auto import tqdm
 
@@ -115,7 +116,7 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
         # A storage to hold the model's tracking results and states on each frame
         inference_state["output_dict"] = {
             "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
-            "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
+            "non_cond_frame_outputs": LRUCache(200),  # dict containing {frame_idx: <out>}
         }
         # The index of the frame that received the first annotation
         inference_state["first_ann_frame_idx"] = None
@@ -156,7 +157,7 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
             inference_state["mask_inputs_per_obj"][obj_idx] = {}
             inference_state["output_dict_per_obj"][obj_idx] = {
                 "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
-                "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
+                "non_cond_frame_outputs": LRUCache(200),  # dict containing {frame_idx: <out>}
             }
             inference_state["temp_output_dict_per_obj"][obj_idx] = {
                 "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
