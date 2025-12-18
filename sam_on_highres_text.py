@@ -75,6 +75,9 @@ if __name__ == '__main__':
         print(f"############## {subject.name} ##############")
         video_files = list(subject.glob("*.mp4"))
         video_files = natsort.natsorted(video_files, reverse=run_reversed)
+        if not video_files:
+            print(f"No video files found for subject {subject.name}, skipping.")
+            
         for i,video_file in enumerate(video_files):
             try:
                 this_output_path = output_base / subject.name / video_file.stem
