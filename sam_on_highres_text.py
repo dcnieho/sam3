@@ -104,7 +104,7 @@ if __name__ == '__main__':
                 )
 
                 # now we propagate the outputs from frame 0 to the end of the video and collect all outputs
-                to_save = list(range(0,1200,10))+list(range(1200,100000000,100))
+                to_save = {*range(0,1200,10), *range(1200,1000000,100)}
                 for i,video_segments in enumerate(propagate(predictor, session_id, chunk_size, this_output_path, to_save)):
                     savepath_videosegs = this_output_path / f'segments_{i}.pickle.gz'
                     with open(savepath_videosegs, 'wb') as handle:
