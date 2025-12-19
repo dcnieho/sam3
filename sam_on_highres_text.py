@@ -47,7 +47,7 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
                 type="propagate_in_video",
                 session_id=session_id,
                 propagation_direction="backward",
-                start_frame_index=prompt_frame
+                start_frame_index=prompt_frame  # NB: not prompt_frame-1, like this the first output is the frame before the prompt
             )
         ):
             out_frame_idx = response["frame_index"]
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects"), pathlib.Path(r"D:\datasets\pupil_validation")]
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\prompts\SAM3")
     output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_text_prompt")
-    run_reversed = False
+    run_reversed = True
 
     # Path containing the videos (zip files or subdirectory of videos)
     subject_folders = [pathlib.Path(f.path) for d in input_dirs for f in os.scandir(d) if f.is_dir()]
@@ -90,6 +90,8 @@ if __name__ == '__main__':
     predictor.lazy_loading = True
     chunk_size = 10000  # store to file once this many frames are processed
     for subject in subject_folders:
+        if subject.name!="pupilValidation_gb_neon_illum":
+            continue
         print(f"############## {subject.name} ##############")
         video_files = list(subject.glob("*.mp4"))
         video_files = natsort.natsorted(video_files, reverse=run_reversed)
@@ -97,6 +99,8 @@ if __name__ == '__main__':
             print(f"No video files found for subject {subject.name}, skipping.")
 
         for i,video_file in enumerate(video_files):
+            if video_file.stem!="cam1_R002":
+                continue
             try:
                 this_output_path = output_base / subject.name / video_file.stem
                 print(f"############## {this_output_path} ##############")
