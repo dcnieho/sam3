@@ -90,13 +90,13 @@ def load_prompts_from_folder(folder: pathlib.Path):
 
 
 if __name__ == '__main__':
-    input_dir   = pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL")
+    input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects")]
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\prompts\SAM3")
     output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_point_prompts")
     run_reversed = False
 
     # Path containing the videos (zip files or subdirectory of videos)
-    subject_folders = [pathlib.Path(f.path) for f in os.scandir(input_dir) if f.is_dir()]
+    subject_folders = [pathlib.Path(f.path) for d in input_dirs for f in os.scandir(d) if f.is_dir()]
     subject_folders = natsort.natsorted(subject_folders, reverse=run_reversed)
 
     sam3_model = build_sam3_video_model(checkpoint_path=pathlib.Path(r'C:\Users\Dee\Desktop\sam3\checkpoints\sam3.pt'))
