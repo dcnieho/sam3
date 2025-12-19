@@ -37,13 +37,31 @@ def save_output_with_prompt(out_frame_idx, predictor, session_id, video_segments
         img = cv2.add(cv2.bitwise_or(img,img,mask=cv2.bitwise_not(mask*255)), cv2.bitwise_or(img2,img2,mask=mask))
     Image.fromarray(img).save(pathlib.Path(save_path) / f'frame_{out_frame_idx:05d}_mask.png')
 
-def propagate(predictor, session_id, chunk_size, save_path=None, save_range=None):
+def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, save_range=None):
     # run propagation throughout the video and collect the results in a dict
     video_segments = {}  # video_segments contains the per-frame segmentation results
+    if prompt_frame>0:
+        # first propagate backward from the prompted frame to the beginning of the video
+        for response in predictor.handle_stream_request(
+            request=dict(
+                type="propagate_in_video",
+                session_id=session_id,
+                propagation_direction="backward",
+                start_frame_index=prompt_frame
+            )
+        ):
+            out_frame_idx = response["frame_index"]
+            video_segments[out_frame_idx] = {i:m for i,m in zip(response["outputs"]["out_obj_ids"], response["outputs"]["out_binary_masks"])}
+            
+            if save_path and save_range and out_frame_idx in save_range:
+                save_output_with_prompt(out_frame_idx, predictor, session_id, video_segments, save_path)
+
+    # then propagate forward to the end
     for response in predictor.handle_stream_request(
         request=dict(
             type="propagate_in_video",
             session_id=session_id,
+            start_frame_index=prompt_frame
         )
     ):
         out_frame_idx = response["frame_index"]
@@ -59,7 +77,7 @@ def propagate(predictor, session_id, chunk_size, save_path=None, save_range=None
     
 
 if __name__ == '__main__':
-    input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects")]
+    input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects"), pathlib.Path(r"D:\datasets\pupil_validation")]
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\prompts\SAM3")
     output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_text_prompt")
     run_reversed = False
@@ -96,19 +114,26 @@ if __name__ == '__main__':
                     )
                 )
                 session_id = response["session_id"]
+
+                # check what frame to prompt
+                prompt_frame = 0
+                if 'pupilValidation' in subject.name and (prompts_base / subject.name).exists():
+                    from sam_on_wearable_points import load_prompts_from_folder
+                    prompts = load_prompts_from_folder(prompts_base / subject.name, video_file.name)
+                    prompt_frame = list(prompts.values())[0]['frame']
                 
                 resp = predictor.handle_request(
                     request=dict(
                         type="add_prompt",
                         session_id=session_id,
-                        frame_index=0,
+                        frame_index=prompt_frame,
                         text="pupil",
                     )
                 )
 
                 # now we propagate the outputs from frame 0 to the end of the video and collect all outputs
                 to_save = {*range(0,1200,10), *range(1200,1000000,100)}
-                for i,video_segments in enumerate(propagate(predictor, session_id, chunk_size, this_output_path, to_save)):
+                for i,video_segments in enumerate(propagate(predictor, session_id, prompt_frame, chunk_size, this_output_path, to_save)):
                     savepath_videosegs = this_output_path / f'segments_{i}.pickle.gz'
                     with open(savepath_videosegs, 'wb') as handle:
                         compress_pickle.dump(video_segments, handle, pickler_kwargs={'protocol': pickle.HIGHEST_PROTOCOL})
