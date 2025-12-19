@@ -59,13 +59,13 @@ def propagate(predictor, session_id, chunk_size, save_path=None, save_range=None
     
 
 if __name__ == '__main__':
-    input_dir   = pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL")
+    input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects")]
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\prompts\SAM3")
     output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_text_prompt")
-    run_reversed = True
+    run_reversed = False
 
     # Path containing the videos (zip files or subdirectory of videos)
-    subject_folders = [pathlib.Path(f.path) for f in os.scandir(input_dir) if f.is_dir()]
+    subject_folders = [pathlib.Path(f.path) for d in input_dirs for f in os.scandir(d) if f.is_dir()]
     subject_folders = natsort.natsorted(subject_folders, reverse=run_reversed)
 
     predictor = build_sam3_video_predictor(checkpoint_path=pathlib.Path(r'C:\Users\Dee\Desktop\sam3\checkpoints\sam3.pt'))
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         video_files = natsort.natsorted(video_files, reverse=run_reversed)
         if not video_files:
             print(f"No video files found for subject {subject.name}, skipping.")
-            
+
         for i,video_file in enumerate(video_files):
             try:
                 this_output_path = output_base / subject.name / video_file.stem
