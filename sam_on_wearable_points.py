@@ -60,7 +60,7 @@ def propagate(predictor, inference_state, chunk_size, save_path=None, prompts=No
     if segments[0]>0:
         segments = [0]+segments
     if segments[-1]<inference_state["num_frames"]-1:
-        segments.append(inference_state["num_frames"])
+        segments.append(inference_state["num_frames"])  # NB: on purpose one too high, will be subtracted in the next line
     segments = [[segments[i],segments[i+1]-1] for i in range(0,len(segments)-1)]
 
     video_segments = {}  # video_segments contains the per-frame segmentation results
@@ -94,7 +94,7 @@ def propagate(predictor, inference_state, chunk_size, save_path=None, prompts=No
                         clear_old_points=False
                     )
         if reverse:
-            for out_frame_idx, out_obj_ids, low_res_masks, video_res_masks, obj_scores in predictor.propagate_in_video(inference_state, reverse=True, propagate_preflight=True):
+            for out_frame_idx, out_obj_ids, low_res_masks, video_res_masks, obj_scores in predictor.propagate_in_video(inference_state, start_frame_idx=s[1], max_frame_num_to_track=s[1]-s[0]+1, reverse=True, propagate_preflight=True):
                 video_segments[out_frame_idx] = {out_obj_id: (video_res_masks[i] > 0.0).cpu().numpy() for i, out_obj_id in enumerate(out_obj_ids)}
                 video_segments[out_frame_idx]['image_file'] = inference_state['images'].img_paths[min(out_frame_idx,len(inference_state['images'].img_paths)-1)]
                 if save_path and (out_frame_idx in prompt_frames or (save_range and out_frame_idx in save_range)):
