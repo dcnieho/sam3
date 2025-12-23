@@ -17,7 +17,7 @@ from PIL import Image
 from sam3.logger import get_logger
 from tqdm import tqdm
 
-from sam3.model.utils.misc import TorchCodecDecoder, VideoFileLoaderWithTorchCodec
+from sam3.model.utils.misc import TorchCodecDecoder, VideoFileLoaderWithTorchCodec, VideoFrameLoaderDeprecated
 
 
 logger = get_logger(__name__)
@@ -37,6 +37,7 @@ def load_resource_as_video_frames(
     img_std=(0.5, 0.5, 0.5),
     async_loading_frames=False,
     lazy_loading=False,
+    lazy_loader='torchcodec',
     video_loader_type="cv2",
 ):
     """
@@ -91,6 +92,7 @@ def load_resource_as_video_frames(
             img_std=img_std,
             async_loading_frames=async_loading_frames,
             lazy_loading=lazy_loading,
+            lazy_loader=lazy_loader,
             video_loader_type=video_loader_type,
         )
 
@@ -126,6 +128,7 @@ def load_video_frames(
     img_std=(0.5, 0.5, 0.5),
     async_loading_frames=False,
     lazy_loading=False,
+    lazy_loader='torchcodec',
     video_loader_type="cv2",
 ):
     """
@@ -156,6 +159,7 @@ def load_video_frames(
             img_std=img_std,
             async_loading_frames=async_loading_frames,
             lazy_loading=lazy_loading,
+            lazy_loader=lazy_loader,
             video_loader_type=video_loader_type,
         )
     else:
@@ -225,19 +229,23 @@ def load_video_frames_from_video_file(
     img_std,
     async_loading_frames,
     lazy_loading,
+    lazy_loader='torchcodec',
     gpu_acceleration=False,
     gpu_device=None,
     video_loader_type="cv2",
 ):
     """Load the video frames from a video file."""
     if lazy_loading:
-        loader = VideoFileLoaderWithTorchCodec(
+        kwargs = dict(
             video_path=video_path,
             image_size=image_size,
             offload_video_to_cpu=offload_video_to_cpu,
             img_mean=img_mean,
-            img_std=img_std
+            img_std=img_std,
+            gpu_acceleration=gpu_acceleration,
+            gpu_device=gpu_device,
         )
+        loader = VideoFileLoaderWithTorchCodec(**kwargs) if lazy_loader=='torchcodec' else VideoFrameLoaderDeprecated(**kwargs)
         return loader, loader.video_height, loader.video_width
     elif video_loader_type == "cv2":
         return load_video_frames_from_video_file_using_cv2(

@@ -57,6 +57,7 @@ class Sam3VideoInference(Sam3VideoBase):
         offload_video_to_cpu=False,
         async_loading_frames=False,
         lazy_loading=False,
+        lazy_loader='torchcodec',
         video_loader_type="cv2",
     ):
         """Initialize an inference state from `resource_path` (an image or a video)."""
@@ -68,6 +69,7 @@ class Sam3VideoInference(Sam3VideoBase):
             img_std=self.image_std,
             async_loading_frames=async_loading_frames,
             lazy_loading=lazy_loading,
+            lazy_loader=lazy_loader,
             video_loader_type=video_loader_type,
         )
         inference_state = {}

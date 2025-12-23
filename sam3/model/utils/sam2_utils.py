@@ -12,7 +12,7 @@ import torch
 from PIL import Image
 from tqdm import tqdm
 
-from sam3.model.utils.misc import VideoFileLoaderWithTorchCodec
+from sam3.model.utils.misc import VideoFileLoaderWithTorchCodec, VideoFrameLoaderDeprecated
 
 
 def _load_img_as_tensor(img_path, image_size):
@@ -103,6 +103,7 @@ def load_video_frames(
     img_std=(0.5, 0.5, 0.5),
     async_loading_frames=False,
     lazy_loading=False,
+    lazy_loader='torchcodec',
     separate_prompts=None,
     compute_device=torch.device("cuda"),
 ):
@@ -111,7 +112,7 @@ def load_video_frames(
     the model and are loaded to GPU if offload_video_to_cpu=False. This is used by the demo.
     """
     if lazy_loading:
-        loader = VideoFileLoaderWithTorchCodec(
+        kwargs = dict(
             video_path=video_path,
             image_size=image_size,
             offload_video_to_cpu=offload_video_to_cpu,
@@ -120,6 +121,7 @@ def load_video_frames(
             gpu_device=compute_device,
             separate_prompts=separate_prompts,
         )
+        loader = VideoFileLoaderWithTorchCodec(**kwargs) if lazy_loader=='torchcodec' else VideoFrameLoaderDeprecated(**kwargs)
         return loader, loader.video_height, loader.video_width
     
     is_bytes = isinstance(video_path, bytes)

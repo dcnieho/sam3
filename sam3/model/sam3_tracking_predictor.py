@@ -67,6 +67,7 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
         offload_state_to_cpu=False,
         async_loading_frames=False,
         lazy_loading=False,
+        lazy_loader='torchcodec',
         separate_prompts=None
     ):
         """Initialize a inference state."""
@@ -93,6 +94,7 @@ class Sam3TrackerPredictor(Sam3TrackerBase):
                 async_loading_frames=async_loading_frames,
                 compute_device=inference_state["storage_device"],
                 lazy_loading=lazy_loading,
+                lazy_loader=lazy_loader,
                 separate_prompts=separate_prompts,
             )
 

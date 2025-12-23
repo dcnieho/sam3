@@ -33,11 +33,13 @@ class Sam3VideoPredictor:
         strict_state_dict_loading=True,
         async_loading_frames=False,
         lazy_loading=False,
+        lazy_loader='torchcodec',
         video_loader_type="cv2",
         apply_temporal_disambiguation: bool = True,
     ):
         self.async_loading_frames = async_loading_frames
         self.lazy_loading = lazy_loading
+        self.lazy_loader = lazy_loader
         self.video_loader_type = video_loader_type
         from sam3.model_builder import build_sam3_video_model
 
@@ -116,6 +118,7 @@ class Sam3VideoPredictor:
             resource_path=resource_path,
             async_loading_frames=self.async_loading_frames,
             lazy_loading=self.lazy_loading,
+            lazy_loader=self.lazy_loader,
             video_loader_type=self.video_loader_type,
         )
         if not session_id:
