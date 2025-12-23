@@ -304,3 +304,150 @@ class VideoFileLoaderWithTorchCodec:
 
     def __len__(self):
         return self.num_frames
+
+class VideoFrameLoaderDeprecated:
+    def __init__(
+        self,
+        video_path,
+        image_size,
+        img_mean,
+        img_std,
+        offload_video_to_cpu,
+        gpu_acceleration=True,
+        gpu_device=None,
+        cache_size=100,
+        separate_prompts=None,
+    ):
+        from torchvision.io.video_reader import VideoReader
+
+        # Check and possibly infer the output device (and also get its GPU id when applicable)
+        assert gpu_device is None or gpu_device.type == "cuda"
+        gpu_id = (
+            gpu_device.index
+            if gpu_device is not None and gpu_device.index is not None
+            else torch.cuda.current_device()
+        )
+        if offload_video_to_cpu:
+            out_device = torch.device("cpu")
+        else:
+            out_device = torch.device("cuda") if gpu_device is None else gpu_device
+        self.out_device = out_device
+        self.gpu_acceleration = gpu_acceleration
+        self.gpu_id = gpu_id
+        self.image_size = image_size
+        self.offload_video_to_cpu = offload_video_to_cpu
+        if not isinstance(img_mean, torch.Tensor):
+            img_mean = torch.tensor(img_mean, dtype=torch.float16)[:, None, None]
+        self.img_mean = img_mean
+        if not isinstance(img_std, torch.Tensor):
+            img_std = torch.tensor(img_std, dtype=torch.float16)[:, None, None]
+        self.img_std = img_std
+
+        if gpu_acceleration:
+            self.img_mean = self.img_mean.to(f"cuda:{self.gpu_id}")
+            self.img_std = self.img_std.to(f"cuda:{self.gpu_id}")
+        else:
+            self.img_mean = self.img_mean.cpu()
+            self.img_std = self.img_std.cpu()
+
+        self.rank = int(os.environ.get("RANK", "0"))
+        self.world_size = int(os.environ.get("WORLD_SIZE", "1"))
+
+        self.video_stream = VideoReader(video_path, stream="video")
+        self.video_data = self.video_stream.get_metadata()['video']
+        if "fps" in self.video_data:
+            self.video_fps = self.video_data['fps'][0]
+        else:
+            self.video_fps = self.video_data["framerate"][0]
+        try:
+            self.num_frames = self.video_stream.container.streams.video[0].frames
+        except:
+            self.num_frames = int(self.video_data['duration'][0] * self.video_fps)
+        self.video_height = None
+        self.video_width = None
+
+        self.video_frame_index = -1
+
+        # if we have extra frames for prompts, set up loading for those too
+        self.extra_frames = None
+        if separate_prompts is not None:
+            self.extra_frames = [fr for fr in separate_prompts]
+            self.num_extra_frames = len(self.extra_frames)
+            self.num_frames += self.num_extra_frames
+        img_paths = [video_path]
+        if self.extra_frames is not None:
+            self.img_paths = self.extra_frames+img_paths
+        else:
+            self.img_paths = img_paths
+
+        # Create an LRU cache for frames
+        self.cache_size = cache_size
+        self.frame_cache = LRUCache(capacity=self.cache_size)
+        # warm up: get first frame
+        self.get_frame(0)
+
+    @torch.inference_mode()
+    def get_frame(self, idx):
+        """Fetch a frame using the LRU cache or load it if it's not cached."""
+        # Check if frame is in cache
+        cached_frame = self.frame_cache.get(idx)
+        if cached_frame is not None:
+            return cached_frame
+
+        # Load the frame if it's not in cache
+        frame = self._load_frame(idx)
+
+        # Add the frame to the cache
+        self.frame_cache.put(idx, frame)
+        return frame
+
+    def __getitem__(self, idx):
+        return self.get_frame(idx)
+
+    def _load_frame(self, idx):
+        if self.extra_frames is not None:
+            if idx<self.num_extra_frames:
+                img = Image.open(self.extra_frames[idx]).convert("RGB")
+                self.video_width  = img.width
+                self.video_height = img.height
+                return self._transform_frame(img)
+            else:
+                idx = idx-self.num_extra_frames
+        if self.video_frame_index + 1 == idx:
+            img_dict = self.video_stream.__next__()
+        else:
+            timestamp = idx / self.video_fps
+            self.video_stream = self.video_stream.seek(timestamp)
+            img_dict = self.video_stream.__next__()
+            # Seek to the correct frame
+            while abs(timestamp - img_dict['pts']) > (1 / self.video_fps):
+                img_dict = self.video_stream.__next__()
+        self.video_frame_index = idx
+        frame = img_dict['data']
+        self.video_height, self.video_width = frame.shape[1:]
+        return self._transform_frame(frame)
+
+    def _transform_frame(self, frame):
+        if not isinstance(frame, torch.Tensor):
+            frame = torch.tensor(np.array(frame), dtype=torch.float32).permute(2, 0, 1).to(self.out_device)
+        else:
+            frame = frame.float().to(self.out_device)  # convert to float32 before interpolation
+        frame_resized = F.interpolate(
+            frame[None, :],
+            size=(self.image_size, self.image_size),
+            mode="bicubic",
+            align_corners=False,
+        )[0]
+        # float16 precision should be sufficient for image tensor storage
+        frame_resized = frame_resized.half()  # uint8 -> float16
+        frame_resized /= 255
+        frame_resized -= self.img_mean
+        frame_resized /= self.img_std
+        if self.offload_video_to_cpu:
+            frame_resized = frame_resized.cpu()
+        elif frame_resized.device != self.out_device:
+            frame_resized = frame_resized.to(device=self.out_device, non_blocking=True)
+        return frame_resized
+
+    def __len__(self):
+        return self.num_frames
