@@ -117,6 +117,9 @@ class LRUCache:
     def clear(self):
         self.cache.clear()
 
+    def items(self):
+        """Return a dynamic view of (key, value) pairs, like dict.items()."""
+        return self.cache.items()
 
 class TorchCodecDecoder:
     """
