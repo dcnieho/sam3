@@ -160,6 +160,7 @@ def load_video_frames(
             async_loading_frames=async_loading_frames,
             lazy_loading=lazy_loading,
             lazy_loader=lazy_loader,
+            gpu_acceleration=not offload_video_to_cpu,
             video_loader_type=video_loader_type,
         )
     else:
