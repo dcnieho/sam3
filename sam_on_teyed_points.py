@@ -150,7 +150,7 @@ def load_prompts_from_folder(folder: pathlib.Path, file_name: str):
 if __name__ == '__main__':
     vid_dir = 'VIDEOS'
     gt_dir = 'ANNOTATIONS'
-    input_dir    = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD")
+    input_dir    = pathlib.Path(r"D:\TEyeD")
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD\prompts")
     output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\TEyeD\output\SAM3_point_prompts")
     model = ('l','large') # ('t','tiny') # ('l','large')
@@ -189,7 +189,7 @@ if __name__ == '__main__':
 
                 prompts = load_prompts_from_folder(prompts_base / dataset.name, video_file.stem)
 
-                inference_state = tracker.init_state(video_path=str(video_file), lazy_loading=True)
+                inference_state = tracker.init_state(video_path=str(video_file), lazy_loading=True, lazy_loader='deprecated')
 
                 # now we propagate the outputs from frame 0 to the end of the video and collect all outputs
                 to_save = {*range(0,1200,10), *range(1200,1000000,100)}

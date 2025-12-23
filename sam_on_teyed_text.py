@@ -77,38 +77,41 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
     
 
 if __name__ == '__main__':
-    input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects"), pathlib.Path(r"D:\datasets\pupil_validation")]
-    prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\prompts\SAM3")
-    output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_text_prompt")
+    vid_dir = 'VIDEOS'
+    gt_dir = 'ANNOTATIONS'
+    input_dir    = pathlib.Path(r"D:\TEyeD")
+    prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD\prompts")
+    output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\TEyeD\output\SAM3_text_prompts")
     run_reversed = False
 
     # Path containing the videos (zip files or subdirectory of videos)
-    subject_folders = [pathlib.Path(f.path) for d in input_dirs for f in os.scandir(d) if f.is_dir()]
-    subject_folders = natsort.natsorted(subject_folders, reverse=run_reversed)
+    datasets = [fp for f in os.scandir(input_dir) if (fp:=pathlib.Path(f.path)).is_dir() and all((fp/s).is_dir() for s in [vid_dir,gt_dir])]
+    datasets = natsort.natsorted(datasets, reverse=run_reversed)
 
     predictor = build_sam3_video_predictor(checkpoint_path=pathlib.Path(r'C:\Users\Dee\Desktop\sam3\checkpoints\sam3.pt'))
     predictor.lazy_loading = True
+    predictor.lazy_loader = 'deprecated'
     chunk_size = 10000  # store to file once this many frames are processed
-    for subject in subject_folders:
-        if subject.name!="pupilValidation_gb_neon_illum":
-            continue
-        print(f"############## {subject.name} ##############")
-        video_files = list(subject.glob("*.mp4"))
+    for dataset in datasets:
+        # if dataset.name!="pupilValidation_gb_neon_illum":
+        #     continue
+        print(f"############## {dataset.name} ##############")
+        video_files = list((dataset/vid_dir).glob("*.mp4"))
         video_files = natsort.natsorted(video_files, reverse=run_reversed)
         if not video_files:
-            print(f"No video files found for subject {subject.name}, skipping.")
+            print(f"No video files found for subject {dataset.name}, skipping.")
 
         for i,video_file in enumerate(video_files):
-            if video_file.stem!="cam1_R002":
-                continue
+            # if video_file.stem!="cam1_R002":
+            #     continue
             try:
-                this_output_path = output_base / subject.name / video_file.stem
+                this_output_path = output_base / dataset.name / video_file.stem
                 print(f"############## {this_output_path} ##############")
                 this_output_path.mkdir(parents=True, exist_ok=True)
 
                 savepath_videosegs = this_output_path / 'segments_0.pickle.gz'
                 if os.path.exists(savepath_videosegs):
-                    print(f"Already done. Skipping {subject.name}/{video_file.name}")
+                    print(f"Already done. Skipping {dataset.name}/{video_file.name}")
                     continue
 
                 response = predictor.handle_request(
@@ -121,10 +124,13 @@ if __name__ == '__main__':
 
                 # check what frame to prompt
                 prompt_frame = 0
-                if 'pupilValidation' in subject.name and (prompts_base / subject.name).exists():
-                    from sam_on_wearable_points import load_prompts_from_folder
-                    prompts = load_prompts_from_folder(prompts_base / subject.name, video_file.name)
+                from sam_on_teyed_points import load_prompts_from_folder
+                prompts = load_prompts_from_folder(prompts_base / dataset.name, video_file.stem)
+                if prompts:
                     prompt_frame = list(prompts.values())[0]['frame']
+                else:
+                    print(f"No prompts found for {dataset.name}/{video_file.name}, skipping.")
+                    continue
                 
                 resp = predictor.handle_request(
                     request=dict(
