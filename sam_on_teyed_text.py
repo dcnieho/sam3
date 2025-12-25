@@ -14,7 +14,7 @@ import torch
 
 from sam3.model_builder import build_sam3_video_predictor
 
-mask_clrs = ((0,0,255),(0,255,0),(255,0,0),(0,255,255))
+mask_clrs = ((0,0,255),(0,255,0),(255,0,0),(0,255,255),(255,255,0),(255,0,255),(0,125,255),(125,0,255))
 sizes = (6,12,18,24)
 def save_output_with_prompt(out_frame_idx, predictor, session_id, video_segments, save_path):
     frame_source = predictor._get_session(session_id)["state"]['input_batch'].img_batch
