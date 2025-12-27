@@ -101,15 +101,27 @@ def propagate(predictor, inference_state, chunk_size, save_path=None, prompts=No
                     save_output_with_prompt(out_frame_idx, prompts, video_segments, save_path)
             continue
     video_segments = {}  # video_segments contains the per-frame segmentation results
-    for out_frame_idx, out_obj_ids, low_res_masks, video_res_masks, obj_scores in predictor.propagate_in_video(inference_state, start_frame_idx=s[0], max_frame_num_to_track=s[1]-s[0]+1, reverse=False, propagate_preflight=True):
-        video_segments[out_frame_idx] = {out_obj_id: (video_res_masks[i] > 0.0).cpu().numpy() for i, out_obj_id in enumerate(out_obj_ids)}
-        video_segments[out_frame_idx]['image_file'] = inference_state['images'].img_paths[min(out_frame_idx,len(inference_state['images'].img_paths)-1)]
-        if save_path and (out_frame_idx in prompt_frames or (save_range and out_frame_idx in save_range)):
-            save_output_with_prompt(out_frame_idx, prompts, video_segments, save_path)
+    try:
+        for out_frame_idx, out_obj_ids, low_res_masks, video_res_masks, obj_scores in predictor.propagate_in_video(inference_state, start_frame_idx=s[0], max_frame_num_to_track=s[1]-s[0]+1, reverse=False, propagate_preflight=True):
+            video_segments[out_frame_idx] = {out_obj_id: (video_res_masks[i] > 0.0).cpu().numpy() for i, out_obj_id in enumerate(out_obj_ids)}
+            video_segments[out_frame_idx]['image_file'] = inference_state['images'].img_paths[min(out_frame_idx,len(inference_state['images'].img_paths)-1)]
+            if save_path and (out_frame_idx in prompt_frames or (save_range and out_frame_idx in save_range)):
+                save_output_with_prompt(out_frame_idx, prompts, video_segments, save_path)
 
-        if out_frame_idx>0 and out_frame_idx%chunk_size == 0:
+            if out_frame_idx>0 and out_frame_idx%chunk_size == 0:
+                yield video_segments
+                video_segments.clear()
+    except Exception as e:
+        num_frames = inference_state['images'].num_frames
+        extra = ''
+        if out_frame_idx > num_frames-10:
             yield video_segments
-            video_segments.clear()
+            # write file indicating frame completed and total number of frames
+            completion_path = pathlib.Path(save_path) / 'segment_info.txt'
+            with open(completion_path, 'w') as f:
+                f.write(f'{out_frame_idx}\n{num_frames}\n')
+            extra = f', but state saved (frame {out_frame_idx} of {num_frames})'
+        raise RuntimeError(f"Propagation failed{extra}") from e
     yield video_segments
 
 
