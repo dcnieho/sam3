@@ -8,7 +8,6 @@ import pathlib
 import traceback
 import gc
 import natsort
-import csv
 import os
 import torch
 
@@ -57,22 +56,34 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
                 save_output_with_prompt(out_frame_idx, predictor, session_id, video_segments, save_path)
 
     # then propagate forward to the end
-    for response in predictor.handle_stream_request(
-        request=dict(
-            type="propagate_in_video",
-            session_id=session_id,
-            start_frame_index=prompt_frame
-        )
-    ):
-        out_frame_idx = response["frame_index"]
-        video_segments[out_frame_idx] = {i:m for i,m in zip(response["outputs"]["out_obj_ids"], response["outputs"]["out_binary_masks"])}
-        
-        if save_path and save_range and out_frame_idx in save_range:
-            save_output_with_prompt(out_frame_idx, predictor, session_id, video_segments, save_path)
+    try:
+        for response in predictor.handle_stream_request(
+            request=dict(
+                type="propagate_in_video",
+                session_id=session_id,
+                start_frame_index=prompt_frame
+            )
+        ):
+            out_frame_idx = response["frame_index"]
+            video_segments[out_frame_idx] = {i:m for i,m in zip(response["outputs"]["out_obj_ids"], response["outputs"]["out_binary_masks"])}
+            
+            if save_path and save_range and out_frame_idx in save_range:
+                save_output_with_prompt(out_frame_idx, predictor, session_id, video_segments, save_path)
 
-        if out_frame_idx>0 and out_frame_idx%chunk_size == 0:
+            if out_frame_idx>0 and out_frame_idx%chunk_size == 0:
+                yield video_segments
+                video_segments.clear()
+    except Exception as e:
+        num_frames = predictor._get_session(session_id)["state"]['input_batch'].img_batch.num_frames
+        extra = ''
+        if out_frame_idx > num_frames-25:
             yield video_segments
-            video_segments.clear()
+            # write file indicating frame completed and total number of frames
+            completion_path = pathlib.Path(save_path) / 'segment_info.txt'
+            with open(completion_path, 'w') as f:
+                f.write(f'{out_frame_idx}\n{num_frames}\n')
+            extra = f', but state saved (frame {out_frame_idx} of {num_frames})'
+        raise RuntimeError(f"Propagation failed{extra}") from e
     yield video_segments
     
 
@@ -102,7 +113,7 @@ if __name__ == '__main__':
             print(f"No video files found for subject {dataset.name}, skipping.")
 
         for i,video_file in enumerate(video_files):
-            # if video_file.stem!="cam1_R002":
+            # if video_file.stem!="DikablisT_8_9":
             #     continue
             try:
                 this_output_path = output_base / dataset.name / video_file.stem
