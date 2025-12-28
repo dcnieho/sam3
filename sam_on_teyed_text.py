@@ -125,14 +125,6 @@ if __name__ == '__main__':
                     print(f"Already done. Skipping {dataset.name}/{video_file.name}")
                     continue
 
-                response = predictor.handle_request(
-                    request=dict(
-                        type="start_session",
-                        resource_path=str(video_file),
-                    )
-                )
-                session_id = response["session_id"]
-
                 # check what frame to prompt
                 prompt_frame = 0
                 from sam_on_teyed_points import load_prompts_from_folder
@@ -142,6 +134,14 @@ if __name__ == '__main__':
                 else:
                     print(f"No prompts found for {dataset.name}/{video_file.name}, skipping.")
                     continue
+
+                response = predictor.handle_request(
+                    request=dict(
+                        type="start_session",
+                        resource_path=str(video_file),
+                    )
+                )
+                session_id = response["session_id"]
                 
                 resp = predictor.handle_request(
                     request=dict(
