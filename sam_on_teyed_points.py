@@ -114,7 +114,7 @@ def propagate(predictor, inference_state, chunk_size, save_path=None, prompts=No
     except Exception as e:
         num_frames = inference_state['images'].num_frames
         extra = ''
-        if out_frame_idx > num_frames-10:
+        if out_frame_idx > num_frames-100:
             yield video_segments
             # write file indicating frame completed and total number of frames
             completion_path = pathlib.Path(save_path) / 'segment_info.txt'
@@ -162,7 +162,7 @@ def load_prompts_from_folder(folder: pathlib.Path, file_name: str):
 if __name__ == '__main__':
     vid_dir = 'VIDEOS'
     gt_dir = 'ANNOTATIONS'
-    input_dir    = pathlib.Path(r"D:\TEyeD")
+    input_dir    = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD")
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD\prompts")
     output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\TEyeD\output\SAM3_point_prompts")
     model = ('l','large') # ('t','tiny') # ('l','large')

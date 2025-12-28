@@ -76,7 +76,7 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
     except Exception as e:
         num_frames = predictor._get_session(session_id)["state"]['input_batch'].img_batch.num_frames
         extra = ''
-        if out_frame_idx > num_frames-25:
+        if out_frame_idx > num_frames-114:
             yield video_segments
             # write file indicating frame completed and total number of frames
             completion_path = pathlib.Path(save_path) / 'segment_info.txt'
