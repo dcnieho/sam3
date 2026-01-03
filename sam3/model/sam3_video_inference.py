@@ -17,7 +17,7 @@ from sam3.model.geometry_encoders import Prompt
 from sam3.model.io_utils import IMAGE_EXTS, load_resource_as_video_frames
 from sam3.model.sam3_tracker_utils import fill_holes_in_mask_scores
 from sam3.model.sam3_video_base import MaskletConfirmationStatus, Sam3VideoBase
-from sam3.model.utils.misc import copy_data_to_device
+from sam3.model.utils.misc import copy_data_to_device, LRUCache
 from sam3.perflib.compile import compile_wrapper, shape_logging_wrapper
 from sam3.perflib.masks_ops import masks_to_boxes as perf_masks_to_boxes
 from torchvision.ops import masks_to_boxes
@@ -86,7 +86,7 @@ class Sam3VideoInference(Sam3VideoBase):
         inference_state["tracker_inference_states"] = []
         inference_state["tracker_metadata"] = {}
         inference_state["feature_cache"] = {}
-        inference_state["cached_frame_outputs"] = {}
+        inference_state["cached_frame_outputs"] = LRUCache(capacity=100)
         inference_state["action_history"] = []  # for logging user actions
         inference_state["is_image_only"] = is_image_type(resource_path)
         return inference_state
