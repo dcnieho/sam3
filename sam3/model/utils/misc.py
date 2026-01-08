@@ -1,5 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates. All Rights Reserved
 
+# pyre-unsafe
+
 import os, platform
 from collections import OrderedDict, defaultdict
 from dataclasses import fields, is_dataclass
