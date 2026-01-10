@@ -77,9 +77,10 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
     
 
 if __name__ == '__main__':
+    prompt = 'black circle' # 'pupil
     input_dirs   = [pathlib.Path(r"D:\datasets\sean datasets\2023-04-25_1000Hz_100_EL"), pathlib.Path(r"D:\datasets\sean datasets\2023-09-12 1000 Hz many subjects"), pathlib.Path(r"D:\datasets\pupil_validation")]
     prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\prompts\SAM3")
-    output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_text_prompt")
+    output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\highres\output\SAM3_text_prompt"+'_'+prompt.replace(' ','_'))
     run_reversed = False
 
     # Path containing the videos (zip files or subdirectory of videos)
@@ -131,7 +132,7 @@ if __name__ == '__main__':
                         type="add_prompt",
                         session_id=session_id,
                         frame_index=prompt_frame,
-                        text="pupil",
+                        text=prompt,
                     )
                 )
 

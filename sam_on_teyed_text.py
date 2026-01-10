@@ -88,11 +88,12 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
     
 
 if __name__ == '__main__':
+    prompt = 'black circle' # 'pupil
     vid_dir = 'VIDEOS'
     gt_dir = 'ANNOTATIONS'
     input_dir    = pathlib.Path(r"D:\TEyeD")
-    prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD\prompts")
-    output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\TEyeD\output\SAM3_text_prompts")
+    prompts_base = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\datasets real\TEyeD\prompts3")
+    output_base  = pathlib.Path(r"\\et-nas.humlab.lu.se\FLEX\2025 SAM2_3\TEyeD\output\SAM3_text_prompt"+'_'+prompt.replace(' ','_'))
     run_reversed = False
 
     # Path containing the videos (zip files or subdirectory of videos)
@@ -148,7 +149,7 @@ if __name__ == '__main__':
                         type="add_prompt",
                         session_id=session_id,
                         frame_index=prompt_frame,
-                        text="pupil",
+                        text=prompt,
                     )
                 )
 
