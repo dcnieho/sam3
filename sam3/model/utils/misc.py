@@ -130,11 +130,7 @@ class TorchCodecDecoder:
     """
 
     def __init__(self, source, dimension_order="NCHW", device="cpu", num_threads=1):
-        # ensure ffmpeg binaries needed by torchcodec are on path
-        import ffmpeg as _ffmpeg
-        if not _ffmpeg.is_on_path():
-            _ffmpeg.add_to_path()
-
+        import decord   # this puts the needed ffmpeg dlls on path
         from torchcodec import _core as core
 
         self._source = source  # hold a reference to the source to prevent it from GC
