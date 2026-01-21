@@ -112,7 +112,7 @@ if __name__ == '__main__':
         video_files = natsort.natsorted(video_files, reverse=run_reversed)
         if not video_files:
             print(f"No video files found for subject {dataset.name}, skipping.")
-
+            continue
         for i,video_file in enumerate(video_files):
             # if video_file.stem!="DikablisT_8_9":
             #     continue
