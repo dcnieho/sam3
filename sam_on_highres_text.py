@@ -61,6 +61,7 @@ def propagate(predictor, session_id, prompt_frame, chunk_size, save_path=None, s
         request=dict(
             type="propagate_in_video",
             session_id=session_id,
+            propagation_direction="forward",
             start_frame_index=prompt_frame
         )
     ):
