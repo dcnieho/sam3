@@ -200,8 +200,11 @@ if __name__ == '__main__':
                     continue
 
                 prompts = load_prompts_from_folder(prompts_base / dataset.name, video_file.stem)
+                if not prompts:
+                    print(f"No prompts found for {dataset.name}/{video_file.name}, skipping.")
+                    continue
 
-                inference_state = tracker.init_state(video_path=str(video_file), lazy_loading=True, lazy_loader='deprecated')
+                inference_state = tracker.init_state(video_path=str(video_file), lazy_loading=True)#, lazy_loader='deprecated')
 
                 # now we propagate the outputs from frame 0 to the end of the video and collect all outputs
                 to_save = {*range(0,1200,10), *range(1200,1000000,100)}
