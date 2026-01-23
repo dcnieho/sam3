@@ -92,17 +92,17 @@ if __name__ == '__main__':
     predictor.lazy_loading = True
     chunk_size = 10000  # store to file once this many frames are processed
     for subject in subject_folders:
-        if subject.name!="pupilValidation_gb_neon_illum":
-            continue
+        # if subject.name!="pupilValidation_gb_neon_illum":
+        #     continue
         print(f"############## {subject.name} ##############")
         video_files = list(subject.glob("*.mp4"))
         video_files = natsort.natsorted(video_files, reverse=run_reversed)
         if not video_files:
             print(f"No video files found for subject {subject.name}, skipping.")
-
+            continue
         for i,video_file in enumerate(video_files):
-            if video_file.stem!="cam1_R002":
-                continue
+            # if video_file.stem!="cam1_R002":
+            #     continue
             try:
                 this_output_path = output_base / subject.name / video_file.stem
                 print(f"############## {this_output_path} ##############")
